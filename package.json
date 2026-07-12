@@ -1,0 +1,15 @@
+{
+  "name": "farmer-shaw-text-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SMS-first Farmer Shaw garden assistant with LLM answers, image support hooks, memory, and reminders.",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "GARDEN_DEV_MODE=true node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
