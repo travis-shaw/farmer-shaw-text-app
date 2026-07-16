@@ -105,33 +105,46 @@ export class GardenAssistant {
       content: entry.body
     }));
 
-    const userContent = [
-      {
-        type: "input_text",
-        text: message.body || "The user sent a plant photo without extra text. Help identify visible issues and ask for any missing details."
-      },
-      ...(await this.openai.mediaContentItems(message.media))
-    ];
-
-    const response = await this.openai.createResponse({
-      instructions: GARDEN_ASSISTANT_INSTRUCTIONS,
-      input: [
+    try {
+      const userContent = [
         {
-          role: "developer",
-          content: context
+          type: "input_text",
+          text:
+            message.body ||
+            "The user sent a plant photo without extra text. Help identify visible issues and ask for any missing details."
         },
-        ...history,
-        {
-          role: "user",
-          content: userContent
-        }
-      ]
-    });
+        ...(await this.openai.mediaContentItems(message.media))
+      ];
 
-    return (
-      extractOutputText(response) ||
-      "I had trouble forming a useful answer just now. Can you send that again with your location and the plant name?"
-    );
+      const response = await this.openai.createResponse({
+        instructions: GARDEN_ASSISTANT_INSTRUCTIONS,
+        input: [
+          {
+            role: "developer",
+            content: context
+          },
+          ...history,
+          {
+            role: "user",
+            content: userContent
+          }
+        ]
+      });
+
+      return (
+        extractOutputText(response) ||
+        "I had trouble forming a useful answer just now. Can you send that again with your location and the plant name?"
+      );
+    } catch (error) {
+      console.warn(`[assistant] Falling back after OpenAI error: ${error.message}`);
+      return fallbackReply({
+        message,
+        user,
+        events,
+        today,
+        reason: message.media?.length ? "image_error" : "openai_error"
+      });
+    }
   }
 }
 
@@ -172,12 +185,16 @@ ${reminders || "- None"}
 `.trim();
 }
 
-function fallbackReply({ message, user, events, today }) {
+function fallbackReply({ message, user, events, today, reason = "" }) {
   const body = String(message.body || "");
   const location = formatUserLocation(user.profile);
   const prefix = events.length ? `${events.join(" ")} ` : "";
 
   if (message.media?.length) {
+    if (reason === "image_error") {
+      return `${prefix}I received the photo, but I could not analyze the image just now. Tell me the plant name, your location, how often you water, and whether the spots, yellowing, or wilting appeared suddenly.`;
+    }
+
     return `${prefix}I received the photo. Add OPENAI_API_KEY and I can analyze visible plant symptoms from images. For now, tell me the plant name, your location, how often you water, and whether the spots or wilting appeared suddenly.`;
   }
 

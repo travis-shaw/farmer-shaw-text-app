@@ -82,7 +82,7 @@ export class OpenAIClient {
         continue;
       }
 
-      if (!this.config.openai.inlineMedia) {
+      if (!this.shouldInlineMedia(item)) {
         items.push({
           type: "input_image",
           image_url: item.url
@@ -98,6 +98,24 @@ export class OpenAIClient {
     }
 
     return items;
+  }
+
+  shouldInlineMedia(item) {
+    if (this.config.openai.inlineMedia) {
+      return true;
+    }
+
+    const { accountSid, authToken } = this.config.twilio;
+    if (!accountSid || !authToken) {
+      return false;
+    }
+
+    try {
+      const url = new URL(item.url);
+      return url.hostname === "api.twilio.com" || url.hostname.endsWith(".twilio.com");
+    } catch {
+      return false;
+    }
   }
 
   async downloadMediaAsDataUrl(item) {
